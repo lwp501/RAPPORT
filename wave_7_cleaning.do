@@ -1,5 +1,4 @@
-cd "G:\My Drive\research\RAPPORT\data"
-*cd "C:\users\lwp501\Google Drive\research\RAPPORT\data\
+cd "C:\users\lwp501\research\RAPPORT\data\
 
 capture log close
 log using wave_7_cleaning_log, replace text
@@ -8,7 +7,7 @@ log using wave_7_cleaning_log, replace text
 // task: clean relevant wave 7 MCS datasets, and merge
 // project: RAPPORT 
 // author: Lewis Paton 
-// code last updated: 03/02/2023
+// code last updated: 10/02/2023
 
 version 17
 clear all

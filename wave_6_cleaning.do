@@ -1,6 +1,4 @@
-cd "G:\My Drive\research\RAPPORT\data"
-*cd "C:\users\lwp501\Google Drive\research\RAPPORT\data\
-
+cd "C:\users\lwp501\research\RAPPORT\data\
 
 capture log close
 log using wave_6_cleaning_log, replace text
@@ -9,7 +7,7 @@ log using wave_6_cleaning_log, replace text
 // task: clean relevant wave 6 MCS datasets, and merge
 // project: RAPPORT 
 // author: Lewis Paton 
-// code last updated: 03/02/2023
+// code last updated: 10/02/2023
 
 version 17
 clear all
@@ -203,6 +201,10 @@ foreach i in activity_* {
 	recode `i' (1=5) (2=4) (4=2) (5=1) (6=0) (-9=.) (-8=.) (-1=.)
 	label values `i' activities 
 }
+
+gen reg_watch_sport_w6 = .
+replace reg_watch_sport_w6 = 1 if activity_watch_sport_w6 == 3 | activity_watch_sport_w6 == 4 | activity_watch_sport_w6 == 5
+replace reg_watch_sport_w6 = 0 if activity_watch_sport_w6 == 0 | activity_watch_sport_w6 == 1 | activity_watch_sport_w6 == 2
 
 //drop identity & friends flag
 drop FCINTROE FCINTROF
@@ -459,6 +461,11 @@ rename FCSLLN00 time_to_fall_asleep_w6
 rename FCSLTR00 awaken_during_sleep_w6
 
 
+gen sometimes_wake_sleep_w6 = .
+replace sometimes_wake_sleep_w6 = 1 if awaken_during_sleep_w6 == 1 | awaken_during_sleep_w6 == 2 | awaken_during_sleep_w6 == 3 | awaken_during_sleep_w6 == 4
+replace sometimes_wake_sleep_w6 = 0 if awaken_during_sleep_w6 == 5 | awaken_during_sleep_w6 == 6
+
+
 drop FCVIRNCK FCINTROH FCBRKN00 FCFRUT00 FCVEGI00 FCBRED00 FCMILK00 FCASWD00 ///
 FCSWTD00 FCTKWY00 FCCGHE00 FCGLAS00 FCEYEG00 FCYGLS00 FCHEAR00 FCHAID00 ///
 FCEARD00 FCDENY00 FCBRSH00 FCWEGT00 FCEXWT00 FCETLS00 FCLSWT00 FCPUHG00 FCPUBH00 ///
@@ -589,11 +596,14 @@ rename FDRLG00 parent_religion_w6
 
 rename FD07S00 nsssec_w6
 
+rename FDKESSL kessler_parent_w6
+recode kessler_parent_w6 (-1=.)
+
 //keep main respondent role
 keep if FELIG00==1
 
 
-keep MCSID FPNUM00  parent_religion_w6 nsssec_w6
+keep MCSID FPNUM00  parent_religion_w6 nsssec_w6 kessler_parent_w6
 
 
 save "derived\mcs6_parent_derived_clean.dta", replace  
