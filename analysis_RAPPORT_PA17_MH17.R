@@ -48,7 +48,7 @@ library(gridExtra)
 #set random seed
 set.seed(6428)
 
-############# 1. import data ############
+#### 1. import the data and data management #### 
 # see stata do files for details on main data cleaning
 
 #load data
@@ -70,7 +70,7 @@ mcsData <- dplyr::select(mcsData, !c(id,
                                      physical_activity_guideline_w6))
 
 
-############## 2. missing covariate data #################
+#### 2. handle missing covariate data - single imputation ####
 
 # single imputation & indicator variable for each variable
 # i.e. - male (with single imputed value) & generate male_miss (a binary indicator)
@@ -148,7 +148,7 @@ write.amelia(obj=mcsData.imp, file.stem="imputation")
 mcsData <- mcsData.imp$imputations$imp1
 mcsData <- cbind(mcsData, missing.indicators) 
 
-############### 3. define Y, A and W ###########################
+##### 3. define outcome, exposure and covariates ####
 
 # define outcome 
 mcsData.outcome <- mcsData$kessler_w7
@@ -197,7 +197,7 @@ mcsData.covariates <- dplyr::select(mcsData, !c("kessler_w7", "physical_activity
 
 mcsData.no.outcome <- dplyr::select(mcsData, !c(kessler_w7))
 
-###### 4. split samples into 2 sets: 20% for feature selection, 80% for analysis 
+#### 4. split sample into 2 sets ####
 
 train.size <- floor(0.2 * nrow(mcsData))
 train.ind <- sample(seq_len(nrow(mcsData)), size = train.size)
@@ -218,7 +218,7 @@ mcsData.no.outcome.train <- mcsData.no.outcome[train.ind, ]
 mcsData.no.outcome.test <- mcsData.no.outcome[-train.ind, ]
 
 
-######### 5. feature selection #############
+#### 5. perform feature  selection ####
 
 #automatic feature selection using randomForest()
 
@@ -263,13 +263,14 @@ selected.covs = intersect(results.FS.outcome, results.FS.exposure)
 deleted.covs <- setdiff(all.included.covs, selected.covs)  
 
 
-########## 6. distributions of covariates by exposure####################
+##### 6. summarise the distribution of covariates by exposure ####
 
 CreateTableOne(data=mcsData, strata = "physical_activity_guideline_w7")
 CreateTableOne(data=mcsData.train, strata ="physical_activity_guideline_w7")
 CreateTableOne(data=mcsData.test, strata ="physical_activity_guideline_w7")
 
-######### 7. plot distribution of outcome ######
+#### 7. plot  distribution of outcome, by exposure ####
+
 hist.outcome.all <- ggplot(mcsData, aes(kessler_w7)) + geom_bar(fill="#C55A11") + xlab("Kessler score, age 17")
 
 hist.outcome.A0 <- ggplot(subset(mcsData,physical_activity_guideline_w7==0), aes(kessler_w7)) +
@@ -283,7 +284,7 @@ grid.arrange(hist.outcome.A0, hist.outcome.A1, nrow = 2)
 outcomes_by_exposure <- arrangeGrob(hist.outcome.A0, hist.outcome.A1, nrow = 2)
 ggsave(file="outcome_distributions.png", outcomes_by_exposure) #saves g
 
-########## 8. run TMLE models
+#### 8. run TMLE analyses ####
 
 #define custom learners
 create_gams = create.Learner("SL.gam", tune = list(deg.gam = c(3,4,5)))
@@ -332,7 +333,8 @@ lm.model <- lm(kessler_w7~., data=regression.df)
 confint(lm.model)
 
 
-############# 9. plot distribution of propensity scores from both tmle models ##########################
+#### 9.look at the propensity score distributions by both TMLE models ####
+
 #g1W = P(A=1|W)
 
 mcsData.test$glm.g1W = tmle.fit.glm$g$g1W
@@ -352,7 +354,7 @@ lines(density(mcsData.test$ensemble.g1W[mcsData.test$physical_activity_guideline
 dev.off()
 
 
-########################plot estimates 
+#### 10. look at the distributions of the initial Q predictions ####
 
 png(filename="estimates.png")
 par(mfrow=c(2,1))
@@ -367,8 +369,7 @@ dev.off()
 #reset plotting area
 par(mfrow=c(1,1))
 
-# 10. causal forests
-
+#### 11. perform causal forest analyses ####
 
 #fit the forest for exposure 
 propscore.forest.exposure <- regression_forest(X = mcsData.covariates.test[,selected.covs], 
@@ -403,7 +404,7 @@ tau.hat.allvars <- predict(tau.forest.allvars)
 png("causal_forest_preds.png")
 hist(tau.hat.allvars$predictions)
 dev.off()
-##### Plotting Relationships between CATEs and continuous variables ####
+# Plot Relationships between CATEs and continuous variables 
 
 plot(loess.smooth(mcsData.covariates.test$bmi_w6, tau.hat.allvars$predictions), 
      xlab='BMI W6', ylab='CATE')
@@ -411,12 +412,9 @@ plot(loess.smooth(mcsData.covariates.test$bmi_w6, tau.hat.allvars$predictions),
 plot(loess.smooth(mcsData.covariates.test$IMD_income_decile_w6, tau.hat.allvars$predictions),
      xlab='IMD decile', ylab='CATE')
 
-
-
-##### Best Linear Predictor of Heterogeneity ######
+# Best Linear Predictor of Heterogeneity 
 covariates_blp = data.frame(mcsData.covariates.test[,selected.covs])
 
-# make BMI  categorical (3 buckets)
 # make BMI  categorical (2 buckets)
 # get the cutpoints
 cutpoints.bmi <- quantile(covariates_blp$bmi_w6, seq(0,1,length=3),na.rm=TRUE)  
@@ -488,8 +486,7 @@ dwplot
 ggsave("CF.png")
 
 
-#13. rerun TMLE with different exposure classifications
-
+#### 12. rerun TMLE models with different definitions of 'exposure' ####
 
 mcsData.exposure <- physical_activity_any_w7
 
